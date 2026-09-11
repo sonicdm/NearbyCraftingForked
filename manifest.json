@@ -1,0 +1,10 @@
+{
+  "name": "NearbyCraftingForked",
+  "version_number": "1.4.5",
+  "website_url": "https://github.com/sonicdm/NearbyCraftingForked",
+  "description": "Fork of Nearby Crafting (original by IPA38 / mikeg) with Quick Deposit exclusions and fuel/ore from nearby chests for smelters, kilns, fires and lights.",
+  "author": "SonicDM",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2202"
+  ]
+}
