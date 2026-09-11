@@ -17,7 +17,7 @@ This is a source fork of **Nearby Crafting 1.2.1** (original by IPA38 / mikeg) w
 
 Do **not** run this fork at the same time as the original Nearby Crafting plugin. Both patch the same Valheim methods; use one or the other.
 
-Also disable **CraftFromChests** while using this fork — crafting patches collide, and station fueling is covered here instead.
+This may break other CraftFromChests-style plugins that also patch crafting, building, or station fueling.
 
 ## Features
 
@@ -278,7 +278,7 @@ BepInEx/plugins/SonicDM-NearbyCraftingForked/
 - Nearby Crafting Forked uses Valheim's recipe requirement logic so conditional recipe requirements introduced in Valheim 1.0 are handled correctly.
 - Resource consumption can be split between the player's inventory and multiple eligible nearby containers.
 - Obliterators (Incinerator) are ignored by default via `Containers.IgnoreObliterators` (Quick Deposit, crafting/building, and station fuel/ore assist).
-- Disable CraftFromChests when using this fork to avoid craft/build patch collisions; fueling is included here.
+- This may break other CraftFromChests-style plugins that also patch crafting, building, or station fueling.
 - For troubleshooting, enable debug logging in the mod configuration and check `BepInEx/LogOutput.log`.
 - Enable `DebugContainerDetails` only when needed; it is noisy.
 
@@ -286,7 +286,6 @@ BepInEx/plugins/SonicDM-NearbyCraftingForked/
 
 - Author: **SonicDM**
 - Original mod: **Nearby Crafting** by IPA38 / mikeg (`com.mikeg.valheim.nearbycrafting`).
-- Station fuel/ore assist pattern adapted from **Craft From Chests** by Toxo.
 - This fork adds Quick Deposit exclusion controls, allow-list exceptions, wildcards, live config reload, and station fuel/ore from chests under a separate plugin identity.
 
 ## Build (developers)

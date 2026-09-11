@@ -35,7 +35,7 @@
 - Station fuel assist: pull one required fuel item from nearby chests when interacting with smelters, kilns, blast furnaces, campfires, torches, braziers, cooking-station fuel switches, and shield generators (`[Station Fuel] Enabled`).
 - Optional smelter/kiln ore (cookable input) assist (`EnableOreFromChests`).
 - Fuel type comes from each prefab (`m_fuelItem` / `m_fuelItems`) — Wood, Resin, Coal, Greydwarf eye, etc.
-- Intended to replace CraftFromChests fueling so that mod can stay disabled (avoids craft/build patch collisions).
+- Intended to cover station fuel/ore from nearby chests so separate CraftFromChests-style fueling mods are unnecessary (those often collide on craft/build patches).
 
 ## 1.3.0
 
