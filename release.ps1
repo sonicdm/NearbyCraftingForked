@@ -163,8 +163,13 @@ git push origin $tag
 if ($LASTEXITCODE -ne 0) { throw "git push tag failed" }
 
 # Prefer attaching assets here; Actions may create/update notes if the tag workflow races.
-$releaseView = gh release view $tag 2>$null
-if ($LASTEXITCODE -eq 0 -and $releaseView) {
+$releaseExists = $false
+gh release view $tag 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    $releaseExists = $true
+}
+
+if ($releaseExists) {
     Write-Host "Release $tag already exists; uploading assets and refreshing notes..."
     gh release upload $tag $zipPath --clobber
     if ($LASTEXITCODE -ne 0) { throw "gh release upload failed" }
