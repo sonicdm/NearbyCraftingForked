@@ -163,11 +163,15 @@ git push origin $tag
 if ($LASTEXITCODE -ne 0) { throw "git push tag failed" }
 
 # Prefer attaching assets here; Actions may create/update notes if the tag workflow races.
+# PowerShell Stop treats "gh release view" stderr ("release not found") as terminating — temporarily Continue.
 $releaseExists = $false
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 gh release view $tag 2>$null | Out-Null
 if ($LASTEXITCODE -eq 0) {
     $releaseExists = $true
 }
+$ErrorActionPreference = $prevEap
 
 if ($releaseExists) {
     Write-Host "Release $tag already exists; uploading assets and refreshing notes..."
