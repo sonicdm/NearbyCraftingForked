@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0
+
+- Add `nearby` console/chat command to locate an item in eligible nearby chests and glow the nearest matches (`[Item Locate]` config: Enabled, MaxHighlights, DurationSeconds, GlowColor).
+- `/nearby <name>` supports Quick Deposit-style `*` wildcards; `/nearby` with no args uses the held item; `/nearby clear` stops highlights.
+- `locate` is registered as an alias for `nearby`.
+- Locate matching also treats the search text as a substring (so `surtling*` finds both cores and trophies), matches localized display names (e.g. `majestic carapace` → `QueenDrop`), and chat lists distinct matched item names.
+- Parked carts are eligible when `IgnoreMovingContainers` is on; carts that are attached/in use and ships are still ignored.
+- Local chat feedback only; auto-clears after the configured duration.
+
 ## 1.4.5
 
 - Prune destroyed containers from the trait cache on each nearby-container refresh.

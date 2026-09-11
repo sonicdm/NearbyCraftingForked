@@ -4,7 +4,7 @@ Guidance for Cursor agents (and humans) working in this repo.
 
 ## What this is
 
-Valheim **BepInEx** mod: fork of Nearby Crafting with Quick Deposit exclusions and station fuel/ore from nearby chests.
+Valheim **BepInEx** mod: fork of Nearby Crafting with Quick Deposit exclusions, station fuel/ore from nearby chests, and item locate (`nearby`).
 
 | | |
 | --- | --- |
@@ -40,9 +40,8 @@ Override with `-LibDir` on `build.ps1` / `package.ps1` / `release.ps1`.
 
 During an active coding session:
 
-- Prefer **build only** when iterating (`.\build.ps1`).
-- Do **not** run `package.ps1` / create a new versioned zip for every tiny change.
-- Package once when the user asks, or right before a release.
+- After code changes, always verify with **`.\build.ps1`** (expect 0 errors) before considering the change done.
+- Prefer **build only** when iterating — do **not** run `package.ps1` / create a new versioned zip unless the user asks, or right before a release.
 
 `package.ps1` asserts `manifest.json` `version_number` == `PluginVersion` in source == csproj `<Version>`.
 
@@ -103,6 +102,8 @@ Copy `bin\Release\NearbyCraftingForked.dll` there after build. If Valheim is run
 - Station fuel assist: pull **one** item from nearby eligible chests into the player inventory, then let vanilla consume it. Only when the interaction will actually accept fuel/ore (not full, not fireplace tap-to-toggle).
 - Inventory full → show vanilla `$msg_noroom`; never destroy chest stacks (`CanAddItem` + rollback).
 - `Inventory.GetItem(name, quality, isPrefabName)` — third arg is **`isPrefabName`**, not world-level. Shared names like `$item_resin` need **`false`**.
+- Item locate: Terminal command `nearby` / chat `/nearby`; glow via emission on existing chest renderers; same `NearbyContainers.Get` filters/range; idle cost ~0 when inactive.
+- `IgnoreMovingContainers`: ships always ignored when on; carts ignored only while `Vagon.InUse()` / `IsAttached()` (parked carts OK).
 - Quick Deposit exclusions are independent of craft/build nearby logic.
 - Do not run alongside the original Nearby Crafting GUID.
 

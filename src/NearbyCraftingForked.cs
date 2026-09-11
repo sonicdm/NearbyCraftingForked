@@ -20,7 +20,7 @@ namespace NearbyCraftingForked
 
 		public const string PluginName = "Nearby Crafting Forked";
 
-		public const string PluginVersion = "1.4.5";
+		public const string PluginVersion = "1.5.0";
 
 		internal static ConfigEntry<float> Range;
 
@@ -53,6 +53,14 @@ namespace NearbyCraftingForked
 		internal static ConfigEntry<bool> StationFuelEnabled;
 
 		internal static ConfigEntry<bool> EnableOreFromChests;
+
+		internal static ConfigEntry<bool> ItemLocateEnabled;
+
+		internal static ConfigEntry<int> ItemLocateMaxHighlights;
+
+		internal static ConfigEntry<float> ItemLocateDurationSeconds;
+
+		internal static ConfigEntry<string> ItemLocateGlowColor;
 
 		internal static ConfigEntry<bool> QuickDepositExcludeConsumables;
 
@@ -116,7 +124,7 @@ namespace NearbyCraftingForked
 			Enabled = Config.Bind<bool>("General", "Enabled", true, "Enable Nearby Crafting.");
 			EnableBuilding = Config.Bind<bool>("General", "EnableBuilding", true, "Allow building pieces to use materials from nearby containers.");
 			Range = Config.Bind<float>("General", "ContainerRange", 20f, new ConfigDescription("Maximum distance in metres from the player to a container.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(1f, 100f), Array.Empty<object>()));
-			IgnoreMovingContainers = Config.Bind<bool>("Containers", "IgnoreMovingContainers", true, "Ignore carts and ships. Recommended for network safety.");
+			IgnoreMovingContainers = Config.Bind<bool>("Containers", "IgnoreMovingContainers", true, "Ignore ships, and ignore carts that are currently attached or in use. Parked/idle carts stay usable for craft, build, deposit, fuel, and locate.");
 			IgnoreObliterators = Config.Bind<bool>("Containers", "IgnoreObliterators", true, "Ignore Obliterators (Incinerator). Prevents Quick Deposit and nearby crafting/building from using them.");
 			RequirePlayerPlacedContainer = Config.Bind<bool>("Containers", "RequirePlayerPlacedContainer", true, "Only use containers attached to a Piece (normally player-built storage), avoiding most world loot chests.");
 			FixRequirementIndicator = Config.Bind<bool>("UI", "FixRequirementIndicator", true, "Treat nearby-container materials as available when coloring crafting requirement indicators.");
@@ -136,6 +144,10 @@ namespace NearbyCraftingForked
 			QuickDepositAllowedItems = Config.Bind<string>("Quick Deposit - Exclusions", "AllowedItems", "", "Exceptions to exclusions: these items still quick-deposit even if their ItemType is excluded. Comma-separated prefab/internal/shared names, case-insensitive, * wildcards allowed. Example: Mushroom*,Honey");
 			StationFuelEnabled = Config.Bind<bool>("Station Fuel", "Enabled", true, "Pull fuel (and smelter ore) from nearby eligible containers when interacting with smelters, kilns, fires, torches, braziers, and similar stations.");
 			EnableOreFromChests = Config.Bind<bool>("Station Fuel", "EnableOreFromChests", true, "When Station Fuel is enabled, also pull smelter/kiln/blast-furnace cookable inputs (ore/scrap) from nearby containers.");
+			ItemLocateEnabled = Config.Bind<bool>("Item Locate", "Enabled", true, "Enable the 'nearby' console/chat command to glow eligible chests that contain an item.");
+			ItemLocateMaxHighlights = Config.Bind<int>("Item Locate", "MaxHighlights", 10, new ConfigDescription("Maximum chests to glow (nearest first; farther matches are culled).", (AcceptableValueBase)(object)new AcceptableValueRange<int>(1, 50), Array.Empty<object>()));
+			ItemLocateDurationSeconds = Config.Bind<float>("Item Locate", "DurationSeconds", 15f, new ConfigDescription("How long chest glows last before auto-clear.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(3f, 120f), Array.Empty<object>()));
+			ItemLocateGlowColor = Config.Bind<string>("Item Locate", "GlowColor", "1,0.85,0.2", "Emission tint for highlighted chests as R,G,B in 0-1 range.");
 			Range.SettingChanged += OnContainerSettingChanged;
 			IgnoreMovingContainers.SettingChanged += OnContainerSettingChanged;
 			IgnoreObliterators.SettingChanged += OnContainerSettingChanged;
@@ -148,10 +160,11 @@ namespace NearbyCraftingForked
 			try
 			{
 				_harmony.PatchAll();
+				ItemLocate.RegisterCommand();
 				Logger.LogInfo((object)PluginName + " " + PluginVersion + " loaded.");
 				if (DebugEnabled)
 				{
-					Debug($"Config: Enabled={Enabled.Value}, EnableBuilding={EnableBuilding.Value}, Range={Range.Value:0.##}m, " + $"RequirePlayerPlacedContainer={RequirePlayerPlacedContainer.Value}, " + $"IgnoreMovingContainers={IgnoreMovingContainers.Value}, IgnoreObliterators={IgnoreObliterators.Value}, " + $"FixRequirementIndicator={FixRequirementIndicator.Value}, " + $"BalrondCompatibility={BalrondCompatibility.Value}, " + $"EnableMassDeposit={EnableMassDeposit.Value}, MassDepositHotkey={MassDepositHotkey.Value}, " + $"StationFuel={StationFuelEnabled.Value}, OreFromChests={EnableOreFromChests.Value}, " + $"DebugContainerDetails={DebugContainerDetails.Value}");
+					Debug($"Config: Enabled={Enabled.Value}, EnableBuilding={EnableBuilding.Value}, Range={Range.Value:0.##}m, " + $"RequirePlayerPlacedContainer={RequirePlayerPlacedContainer.Value}, " + $"IgnoreMovingContainers={IgnoreMovingContainers.Value}, IgnoreObliterators={IgnoreObliterators.Value}, " + $"FixRequirementIndicator={FixRequirementIndicator.Value}, " + $"BalrondCompatibility={BalrondCompatibility.Value}, " + $"EnableMassDeposit={EnableMassDeposit.Value}, MassDepositHotkey={MassDepositHotkey.Value}, " + $"StationFuel={StationFuelEnabled.Value}, OreFromChests={EnableOreFromChests.Value}, " + $"ItemLocate={ItemLocateEnabled.Value}, " + $"DebugContainerDetails={DebugContainerDetails.Value}");
 				}
 			}
 			catch (Exception ex)
@@ -191,6 +204,7 @@ namespace NearbyCraftingForked
 			RecipeRequirementContext.Clear();
 			RecipeConsumptionRules.Clear();
 			CraftingContext.Clear();
+			ItemLocate.ClearHighlights();
 		}
 
 		internal static void Debug(string message)
@@ -214,6 +228,7 @@ namespace NearbyCraftingForked
 			//IL_0032: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0037: Unknown result type (might be due to invalid IL or missing references)
 			WatchConfigFileForChanges();
+			ItemLocate.Tick();
 			if (ReloadConfigHotkey != null)
 			{
 				KeyboardShortcut reloadShortcut = ReloadConfigHotkey.Value;
@@ -596,7 +611,7 @@ namespace NearbyCraftingForked
 			return false;
 		}
 
-		private static bool NameMatches(string value, string pattern)
+		internal static bool NameMatches(string value, string pattern)
 		{
 		    if (string.IsNullOrEmpty(pattern))
 		    {
@@ -1123,11 +1138,11 @@ namespace NearbyCraftingForked
 					}
 					continue;
 				}
-				if (NearbyCraftingForkedPlugin.IgnoreMovingContainers.Value && traits.IsMoving)
+				if (ShouldIgnoreMovingContainer(val, traits))
 				{
 					if (NearbyCraftingForkedPlugin.ContainerDebugEnabled)
 					{
-						NearbyCraftingForkedPlugin.DebugContainer("Ignoring '" + ((Object)val).name + "': moving container.");
+						NearbyCraftingForkedPlugin.DebugContainer("Ignoring '" + ((Object)val).name + "': moving container in active use (or ship).");
 					}
 					continue;
 				}
@@ -1199,6 +1214,36 @@ namespace NearbyCraftingForked
 			{
 				TraitCache.Remove(deadKeys[i]);
 			}
+		}
+
+		/// <summary>
+		/// When IgnoreMovingContainers is on: allow parked carts; skip carts that are attached/in use; always skip ships.
+		/// </summary>
+		private static bool ShouldIgnoreMovingContainer(Container container, ContainerTraits traits)
+		{
+			if (!traits.IsMoving || NearbyCraftingForkedPlugin.IgnoreMovingContainers == null || !NearbyCraftingForkedPlugin.IgnoreMovingContainers.Value)
+			{
+				return false;
+			}
+
+			try
+			{
+				Vagon? cart = ((Component)container).GetComponentInParent<Vagon>(true);
+				if ((Object)(object)cart != (Object)null)
+				{
+					if (cart.InUse() || cart.IsAttached())
+					{
+						return true;
+					}
+					return false;
+				}
+			}
+			catch
+			{
+			}
+
+			// Ships and any other moving container types stay ignored while the setting is on.
+			return true;
 		}
 
 		private static bool HasPlayerPlacedPiece(Container container)
@@ -2255,6 +2300,718 @@ namespace NearbyCraftingForked
 				if (StationChestAssist.TryPullFuelItemDrop(user, fuelItems[i]))
 				{
 					return;
+				}
+			}
+		}
+	}
+
+	internal static class ItemLocate
+	{
+		private const string EmissionColorProperty = "_EmissionColor";
+
+		private static readonly List<HighlightedChest> Active = new List<HighlightedChest>();
+
+		private static readonly MaterialPropertyBlock PropertyBlock = new MaterialPropertyBlock();
+
+		private static bool _commandRegistered;
+
+		private static float _activeUntil = -1f;
+
+		private static Color _baseGlow = new Color(1f, 0.85f, 0.2f, 1f);
+
+		internal static void RegisterCommand()
+		{
+			if (_commandRegistered)
+			{
+				return;
+			}
+			_commandRegistered = true;
+			RegisterOne(
+				"nearby",
+				"[item|clear] Highlight nearby eligible chests containing an item (or clear). No args uses held item.");
+			RegisterOne(
+				"locate",
+				"[item|clear] Alias for nearby — highlight chests containing an item.");
+		}
+
+		private static void RegisterOne(string command, string description)
+		{
+			_ = new Terminal.ConsoleCommand(
+				command,
+				description,
+				new Terminal.ConsoleEvent(OnCommand),
+				false,
+				false,
+				false,
+				false,
+				false,
+				false,
+				null,
+				false,
+				false,
+				false);
+		}
+
+		internal static void ClearHighlights()
+		{
+			for (int i = 0; i < Active.Count; i++)
+			{
+				Active[i].Restore();
+			}
+			Active.Clear();
+			_activeUntil = -1f;
+		}
+
+		internal static void Tick()
+		{
+			if (Active.Count == 0)
+			{
+				return;
+			}
+
+			float now = Time.realtimeSinceStartup;
+			if (now >= _activeUntil)
+			{
+				ClearHighlights();
+				return;
+			}
+
+			float pulse = 0.45f + 0.55f * (0.5f + 0.5f * Mathf.Sin(now * 5f));
+			Color glow = _baseGlow * pulse;
+			glow.a = 1f;
+			for (int i = 0; i < Active.Count; i++)
+			{
+				Active[i].ApplyGlow(glow);
+			}
+		}
+
+		private static void OnCommand(Terminal.ConsoleEventArgs args)
+		{
+			if (NearbyCraftingForkedPlugin.ItemLocateEnabled == null || !NearbyCraftingForkedPlugin.ItemLocateEnabled.Value)
+			{
+				Say("Item locate is disabled in config.");
+				return;
+			}
+
+			if (args.Length >= 2 && string.Equals(args[1], "clear", StringComparison.OrdinalIgnoreCase))
+			{
+				ClearHighlights();
+				Say("Cleared nearby chest highlights.");
+				return;
+			}
+
+			Player? player = Player.m_localPlayer;
+			if ((Object)(object)player == (Object)null)
+			{
+				Say("No local player.");
+				return;
+			}
+
+			string pattern;
+			string displayName;
+			if (args.Length <= 1)
+			{
+				if (!TryGetHeldItemPattern(player, out pattern, out displayName))
+				{
+					Say("Hold an item or use: nearby <item name>");
+					return;
+				}
+			}
+			else
+			{
+				pattern = string.Join(" ", args.Args, 1, args.Length - 1).Trim();
+				if (pattern.Length == 0)
+				{
+					Say("Usage: nearby [item|*pattern*|clear]");
+					return;
+				}
+				displayName = pattern;
+			}
+
+			SearchAndHighlight(player, pattern, displayName);
+		}
+
+		private static bool TryGetHeldItemPattern(Player player, out string pattern, out string displayName)
+		{
+			pattern = string.Empty;
+			displayName = string.Empty;
+			Humanoid humanoid = (Humanoid)(object)player;
+			ItemDrop.ItemData? item = humanoid.RightItem ?? humanoid.LeftItem;
+			if (item?.m_shared == null)
+			{
+				return false;
+			}
+
+			string? prefabName = null;
+			if ((Object)(object)item.m_dropPrefab != (Object)null)
+			{
+				prefabName = ((Object)item.m_dropPrefab).name;
+			}
+
+			if (!string.IsNullOrEmpty(prefabName))
+			{
+				pattern = prefabName!;
+				displayName = prefabName!;
+				return true;
+			}
+
+			pattern = item.m_shared.m_name;
+			displayName = FormatDisplayName(item.m_shared.m_name);
+			return !string.IsNullOrEmpty(pattern);
+		}
+
+		private static void SearchAndHighlight(Player player, string pattern, string displayName)
+		{
+			ClearHighlights();
+			_baseGlow = ParseGlowColor(NearbyCraftingForkedPlugin.ItemLocateGlowColor?.Value);
+			int maxHighlights = NearbyCraftingForkedPlugin.ItemLocateMaxHighlights != null
+				? Mathf.Clamp(NearbyCraftingForkedPlugin.ItemLocateMaxHighlights.Value, 1, 50)
+				: 10;
+			float duration = NearbyCraftingForkedPlugin.ItemLocateDurationSeconds != null
+				? Mathf.Clamp(NearbyCraftingForkedPlugin.ItemLocateDurationSeconds.Value, 3f, 120f)
+				: 15f;
+
+			List<Container> containers = NearbyContainers.Get(player);
+			int matchCount = 0;
+			List<string> matchedLabels = new List<string>();
+
+			for (int i = 0; i < containers.Count; i++)
+			{
+				Container container = containers[i];
+				if ((Object)(object)container == (Object)null)
+				{
+					continue;
+				}
+
+				Inventory? inventory;
+				try
+				{
+					inventory = container.GetInventory();
+				}
+				catch
+				{
+					continue;
+				}
+
+				if (inventory == null || !InventoryContains(inventory, pattern, matchedLabels))
+				{
+					continue;
+				}
+
+				matchCount++;
+				if (Active.Count < maxHighlights)
+				{
+					HighlightedChest? highlight = HighlightedChest.TryCreate(container);
+					if (highlight != null)
+					{
+						Active.Add(highlight);
+					}
+				}
+			}
+
+			string label = matchedLabels.Count > 0
+				? string.Join(", ", matchedLabels)
+				: FormatDisplayName(displayName);
+			if (matchCount == 0)
+			{
+				Say($"No nearby chests contain {FormatDisplayName(displayName)}.");
+				return;
+			}
+
+			_activeUntil = Time.realtimeSinceStartup + duration;
+			Tick();
+
+			if (matchCount > Active.Count)
+			{
+				Say($"Found {label} in {matchCount} chests (showing nearest {Active.Count}).");
+			}
+			else
+			{
+				Say($"Found {label} in {matchCount} chests.");
+			}
+
+			if (NearbyCraftingForkedPlugin.DebugEnabled)
+			{
+				NearbyCraftingForkedPlugin.Debug($"Item locate '{pattern}': matches={matchCount}, glowing={Active.Count}, duration={duration:0.#}s.");
+			}
+		}
+
+		private static bool InventoryContains(Inventory inventory, string pattern, List<string> matchedLabels)
+		{
+			List<ItemDrop.ItemData> items = inventory.GetAllItems();
+			if (items == null || items.Count == 0)
+			{
+				return false;
+			}
+
+			bool found = false;
+			for (int i = 0; i < items.Count; i++)
+			{
+				ItemDrop.ItemData item = items[i];
+				if (item?.m_shared == null)
+				{
+					continue;
+				}
+
+				if (!ItemMatchesLocatePattern(item, pattern, out string matchedLabel))
+				{
+					continue;
+				}
+
+				found = true;
+				AddUniqueLabel(matchedLabels, matchedLabel);
+			}
+
+			return found;
+		}
+
+		private static bool ItemMatchesLocatePattern(ItemDrop.ItemData item, string pattern, out string matchedLabel)
+		{
+			matchedLabel = string.Empty;
+			string sharedName = item.m_shared.m_name;
+			string localized = GetLocalizedName(sharedName);
+
+			if (!string.IsNullOrEmpty(localized) && LocateNameMatches(localized, pattern))
+			{
+				matchedLabel = localized;
+				return true;
+			}
+
+			if (!string.IsNullOrEmpty(sharedName) && LocateNameMatches(sharedName, pattern))
+			{
+				matchedLabel = !string.IsNullOrEmpty(localized) ? localized : FormatDisplayName(sharedName);
+				return true;
+			}
+
+			// Also match token without '$' (e.g. item_seekerqueen_drop).
+			if (!string.IsNullOrEmpty(sharedName) && sharedName[0] == '$')
+			{
+				string token = sharedName.Substring(1);
+				if (LocateNameMatches(token, pattern))
+				{
+					matchedLabel = !string.IsNullOrEmpty(localized) ? localized : FormatDisplayName(sharedName);
+					return true;
+				}
+			}
+
+			if ((Object)(object)item.m_dropPrefab != (Object)null)
+			{
+				string prefabName = ((Object)item.m_dropPrefab).name;
+				if (!string.IsNullOrEmpty(prefabName) && LocateNameMatches(prefabName, pattern))
+				{
+					matchedLabel = !string.IsNullOrEmpty(localized) ? localized : prefabName;
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Locate matching: QD-style globs, plus substring fallback so "surtling*" / "surtling"
+		/// find both SurtlingCore and TrophySurtling. Also used for localized display names
+		/// (e.g. "majestic carapace" → QueenDrop / $item_seekerqueen_drop).
+		/// </summary>
+		private static bool LocateNameMatches(string value, string pattern)
+		{
+			if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(pattern))
+			{
+				return false;
+			}
+
+			if (NearbyCraftingForkedPlugin.NameMatches(value, pattern))
+			{
+				return true;
+			}
+
+			string needle = pattern.Replace("*", string.Empty).Trim();
+			if (needle.Length == 0)
+			{
+				return false;
+			}
+
+			return value.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+		}
+
+		private static Func<string, string> _localizeName;
+
+		private static bool _localizeResolved;
+
+		private static string GetLocalizedName(string sharedName)
+		{
+			if (string.IsNullOrEmpty(sharedName))
+			{
+				return sharedName;
+			}
+
+			EnsureLocalizeResolver();
+			if (_localizeName == null)
+			{
+				return FormatDisplayName(sharedName);
+			}
+
+			try
+			{
+				string localized = _localizeName(sharedName);
+				if (!string.IsNullOrEmpty(localized) && localized[0] != '$')
+				{
+					return localized;
+				}
+			}
+			catch
+			{
+			}
+
+			return FormatDisplayName(sharedName);
+		}
+
+		private static void EnsureLocalizeResolver()
+		{
+			if (_localizeResolved)
+			{
+				return;
+			}
+
+			_localizeResolved = true;
+			try
+			{
+				Type locType = AccessTools.TypeByName("Localization");
+				if (locType == null)
+				{
+					return;
+				}
+
+				MethodInfo getInstance = AccessTools.PropertyGetter(locType, "instance");
+				MethodInfo localize = AccessTools.Method(locType, "Localize", new Type[] { typeof(string) });
+				if (getInstance == null || localize == null)
+				{
+					localize = AccessTools.Method(locType, "Translate", new Type[] { typeof(string) });
+				}
+
+				if (getInstance == null || localize == null)
+				{
+					return;
+				}
+
+				_localizeName = (string token) =>
+				{
+					object instance = getInstance.Invoke(null, null);
+					if (instance == null)
+					{
+						return token;
+					}
+
+					object result = localize.Invoke(instance, new object[] { token });
+					return result as string ?? token;
+				};
+			}
+			catch (Exception ex)
+			{
+				NearbyCraftingForkedPlugin.Debug("Item locate localization resolver failed: " + ex.Message);
+			}
+		}
+
+		private static void AddUniqueLabel(List<string> labels, string label)
+		{
+			if (string.IsNullOrEmpty(label))
+			{
+				return;
+			}
+
+			for (int i = 0; i < labels.Count; i++)
+			{
+				if (string.Equals(labels[i], label, StringComparison.OrdinalIgnoreCase))
+				{
+					return;
+				}
+			}
+
+			labels.Add(label);
+		}
+
+		private static string FormatDisplayName(string name)
+		{
+			if (string.IsNullOrEmpty(name))
+			{
+				return name;
+			}
+			if (name.StartsWith("$item_", StringComparison.OrdinalIgnoreCase) && name.Length > 6)
+			{
+				string token = name.Substring(6);
+				if (token.Length == 0)
+				{
+					return name;
+				}
+				return char.ToUpperInvariant(token[0]) + token.Substring(1);
+			}
+			if (name.StartsWith("$", StringComparison.Ordinal) && name.Length > 1)
+			{
+				return name.Substring(1);
+			}
+			return name;
+		}
+
+		private static Color ParseGlowColor(string? raw)
+		{
+			Color fallback = new Color(1f, 0.85f, 0.2f, 1f);
+			if (string.IsNullOrWhiteSpace(raw))
+			{
+				return fallback;
+			}
+
+			string[] parts = raw!.Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			if (parts.Length < 3)
+			{
+				return fallback;
+			}
+
+			if (!float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float r)
+				|| !float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float g)
+				|| !float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float b))
+			{
+				return fallback;
+			}
+
+			return new Color(Mathf.Clamp01(r), Mathf.Clamp01(g), Mathf.Clamp01(b), 1f);
+		}
+
+		private static void Say(string message)
+		{
+			if ((Object)(object)Chat.instance != (Object)null)
+			{
+				Chat.instance.AddString(message);
+			}
+			else if (NearbyCraftingForkedPlugin.ModLogger != null)
+			{
+				NearbyCraftingForkedPlugin.ModLogger.LogInfo((object)message);
+			}
+		}
+
+		private sealed class HighlightedChest
+		{
+			private readonly List<RendererGlow> _renderers = new List<RendererGlow>();
+
+			internal static HighlightedChest? TryCreate(Container container)
+			{
+				Renderer[] renderers = ((Component)container).GetComponentsInChildren<Renderer>(true);
+				if (renderers == null || renderers.Length == 0)
+				{
+					return null;
+				}
+
+				HighlightedChest highlight = new HighlightedChest();
+				for (int i = 0; i < renderers.Length; i++)
+				{
+					Renderer renderer = renderers[i];
+					if ((Object)(object)renderer == (Object)null || renderer is ParticleSystemRenderer)
+					{
+						continue;
+					}
+
+					RendererGlow? glow = RendererGlow.TryCreate(renderer);
+					if (glow != null)
+					{
+						highlight._renderers.Add(glow);
+					}
+				}
+
+				if (highlight._renderers.Count == 0)
+				{
+					return null;
+				}
+
+				return highlight;
+			}
+
+			internal void ApplyGlow(Color color)
+			{
+				for (int i = 0; i < _renderers.Count; i++)
+				{
+					_renderers[i].Apply(color);
+				}
+			}
+
+			internal void Restore()
+			{
+				for (int i = 0; i < _renderers.Count; i++)
+				{
+					_renderers[i].Restore();
+				}
+				_renderers.Clear();
+			}
+		}
+
+		private sealed class RendererGlow
+		{
+			private readonly Renderer _renderer;
+
+			private readonly bool _usedMaterialInstances;
+
+			private readonly Material[]? _originalSharedMaterials;
+
+			private readonly Material[]? _instancedMaterials;
+
+			private readonly Color[]? _originalEmission;
+
+			private readonly bool[]? _hadEmissionKeyword;
+
+			private RendererGlow(Renderer renderer, bool usedMaterialInstances, Material[]? originalSharedMaterials, Material[]? instancedMaterials, Color[]? originalEmission, bool[]? hadEmissionKeyword)
+			{
+				_renderer = renderer;
+				_usedMaterialInstances = usedMaterialInstances;
+				_originalSharedMaterials = originalSharedMaterials;
+				_instancedMaterials = instancedMaterials;
+				_originalEmission = originalEmission;
+				_hadEmissionKeyword = hadEmissionKeyword;
+			}
+
+			internal static RendererGlow? TryCreate(Renderer renderer)
+			{
+				Material[] shared = renderer.sharedMaterials;
+				if (shared == null || shared.Length == 0)
+				{
+					return null;
+				}
+
+				// Prefer MaterialPropertyBlock so we do not permanently alter shared materials.
+				renderer.GetPropertyBlock(PropertyBlock);
+				PropertyBlock.SetColor(EmissionColorProperty, Color.black);
+				renderer.SetPropertyBlock(PropertyBlock);
+				if (SupportsEmissionViaPropertyBlock(renderer))
+				{
+					return new RendererGlow(renderer, false, null, null, null, null);
+				}
+
+				Material[] originals = new Material[shared.Length];
+				Material[] instances = new Material[shared.Length];
+				Color[] originalEmission = new Color[shared.Length];
+				bool[] hadKeyword = new bool[shared.Length];
+				bool any = false;
+				for (int i = 0; i < shared.Length; i++)
+				{
+					Material mat = shared[i];
+					originals[i] = mat;
+					if ((Object)(object)mat == (Object)null)
+					{
+						instances[i] = mat;
+						continue;
+					}
+
+					Material instance = new Material(mat);
+					instances[i] = instance;
+					hadKeyword[i] = instance.IsKeywordEnabled("_EMISSION");
+					if (instance.HasProperty(EmissionColorProperty))
+					{
+						originalEmission[i] = instance.GetColor(EmissionColorProperty);
+						instance.EnableKeyword("_EMISSION");
+						any = true;
+					}
+					else
+					{
+						originalEmission[i] = Color.black;
+					}
+				}
+
+				if (!any)
+				{
+					for (int i = 0; i < instances.Length; i++)
+					{
+						if ((Object)(object)instances[i] != (Object)null && (Object)(object)instances[i] != (Object)(object)originals[i])
+						{
+							Object.Destroy(instances[i]);
+						}
+					}
+					return null;
+				}
+
+				renderer.materials = instances;
+				return new RendererGlow(renderer, true, originals, instances, originalEmission, hadKeyword);
+			}
+
+			private static bool SupportsEmissionViaPropertyBlock(Renderer renderer)
+			{
+				// Valheim chest shaders generally honor MPB emission when the keyword is on the material.
+				Material[] shared = renderer.sharedMaterials;
+				for (int i = 0; i < shared.Length; i++)
+				{
+					Material mat = shared[i];
+					if ((Object)(object)mat != (Object)null && mat.HasProperty(EmissionColorProperty))
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+
+			internal void Apply(Color color)
+			{
+				if ((Object)(object)_renderer == (Object)null)
+				{
+					return;
+				}
+
+				if (!_usedMaterialInstances)
+				{
+					_renderer.GetPropertyBlock(PropertyBlock);
+					PropertyBlock.SetColor(EmissionColorProperty, color);
+					_renderer.SetPropertyBlock(PropertyBlock);
+					return;
+				}
+
+				if (_instancedMaterials == null)
+				{
+					return;
+				}
+
+				for (int i = 0; i < _instancedMaterials.Length; i++)
+				{
+					Material mat = _instancedMaterials[i];
+					if ((Object)(object)mat != (Object)null && mat.HasProperty(EmissionColorProperty))
+					{
+						mat.SetColor(EmissionColorProperty, color);
+					}
+				}
+			}
+
+			internal void Restore()
+			{
+				if ((Object)(object)_renderer == (Object)null)
+				{
+					return;
+				}
+
+				if (!_usedMaterialInstances)
+				{
+					_renderer.GetPropertyBlock(PropertyBlock);
+					PropertyBlock.SetColor(EmissionColorProperty, Color.black);
+					_renderer.SetPropertyBlock(PropertyBlock);
+					return;
+				}
+
+				if (_originalSharedMaterials != null)
+				{
+					_renderer.sharedMaterials = _originalSharedMaterials;
+				}
+
+				if (_instancedMaterials != null)
+				{
+					for (int i = 0; i < _instancedMaterials.Length; i++)
+					{
+						Material mat = _instancedMaterials[i];
+						if ((Object)(object)mat == (Object)null)
+						{
+							continue;
+						}
+						if (_originalEmission != null && mat.HasProperty(EmissionColorProperty))
+						{
+							mat.SetColor(EmissionColorProperty, _originalEmission[i]);
+						}
+						if (_hadEmissionKeyword != null && !_hadEmissionKeyword[i])
+						{
+							mat.DisableKeyword("_EMISSION");
+						}
+						Object.Destroy(mat);
+					}
 				}
 			}
 		}

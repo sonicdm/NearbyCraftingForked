@@ -12,7 +12,7 @@ This is a source fork of **Nearby Crafting 1.2.1** (original by IPA38 / mikeg) w
 | Plugin name | `Nearby Crafting Forked` |
 | Plugin GUID | `com.sonicdm.valheim.nearbycraftingforked` |
 | Assembly | `NearbyCraftingForked.dll` |
-| Version | `1.4.5` |
+| Version | `1.5.0` |
 | Config file | `BepInEx/config/com.sonicdm.valheim.nearbycraftingforked.cfg` |
 
 Do **not** run this fork at the same time as the original Nearby Crafting plugin. Both patch the same Valheim methods; use one or the other.
@@ -29,6 +29,7 @@ This may break other CraftFromChests-style plugins that also patch crafting, bui
 - Per-item exclude / allow lists with `*` wildcards (for example deposit mushrooms while keeping other food).
 - Fuel smelters, charcoal kilns, blast furnaces, campfires, torches, braziers and similar stations from nearby chests on interact (uses each prefab’s own fuel item: Wood, Resin, Coal, Greydwarf eye, etc.).
 - Optionally pull smelter/kiln ore and other cookable inputs from nearby chests.
+- Locate items in nearby chests with the `nearby` console/chat command (glows nearest matches).
 - Containers are processed nearest-first.
 - Configurable container range and player-built / moving-container filters.
 - Compatibility support for BalrondConstructions storage layouts.
@@ -207,6 +208,30 @@ Enabled = true
 EnableOreFromChests = true
 ```
 
+## Item locate (`nearby`)
+
+Find which eligible nearby chests contain an item and glow the nearest matches (same range and container filters as crafting).
+
+| Command | Effect |
+| --- | --- |
+| `nearby Resin` / `/nearby Resin` | Search by prefab/shared name (`*` wildcards allowed, same as Quick Deposit lists) |
+| `nearby` / `/nearby` | Search for the currently held/selected item |
+| `nearby clear` / `/nearby clear` | Clear highlights immediately |
+
+`locate` is an alias for `nearby` (same args).
+
+Matching uses Quick Deposit-style `*` wildcards, and also treats the text between wildcards as a substring — so `surtling`, `surtling*`, and `*surtling*` all find both **SurtlingCore** and **TrophySurtling**. Searches also match **localized display names** (for example `majestic carapace` finds `QueenDrop` / `$item_seekerqueen_drop`), plus prefab and shared/token names. Only player-built container inventories are searched (wall-mounted trophy stands are not).
+
+Highlights auto-clear after the configured duration. A new search replaces the previous set. Feedback is a local chat line only (for example `Found Resin in 3 chests.`).
+
+```ini
+[Item Locate]
+Enabled = true
+MaxHighlights = 10
+DurationSeconds = 15
+GlowColor = 1,0.85,0.2
+```
+
 ## Configuration
 
 Nearby Crafting Forked includes options for:
@@ -214,7 +239,7 @@ Nearby Crafting Forked includes options for:
 - Enabling or disabling the mod.
 - Enabling or disabling nearby-resource building.
 - Changing the nearby-container range.
-- Ignoring moving containers (carts/ships).
+- Ignoring ships and carts that are actively in use (parked carts stay eligible).
 - Ignoring Obliterators (default on).
 - Requiring containers to be player-built.
 - Enabling or disabling the crafting requirement indicator fix.
@@ -222,6 +247,7 @@ Nearby Crafting Forked includes options for:
 - Changing the Mass Quick Deposit hotkey.
 - Quick Deposit type exclusions and per-item exclude/allow lists.
 - Station fuel/ore assist from nearby chests.
+- Item locate (`nearby` command) glow and duration.
 - Auto-reloading config when the `.cfg` changes on disk.
 - Optional manual config-reload hotkey (unset by default).
 - BalrondConstructions compatibility.

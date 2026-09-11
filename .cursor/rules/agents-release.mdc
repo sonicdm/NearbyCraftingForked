@@ -10,7 +10,7 @@ Follow **AGENTS.md** at the repo root for full build/release steps.
 ## Quick rules
 
 - Valheim refs live under `E:\Scripts\Valheim Mods\Reqs` (local only). Never commit them. GitHub Actions cannot build this mod.
-- Session work: prefer `.\build.ps1` only. Do **not** run `package.ps1` / create versioned zips for every small change.
+- Session work: after code changes always verify with `.\build.ps1` only. Do **not** run `package.ps1` / create versioned zips unless asked.
 - Release (when asked): bump version in source + csproj + manifest + README + `CHANGELOG.md` `## X.Y.Z`, commit, then `.\package.ps1` and `.\release.ps1 -SkipPackage` (or `.\release.ps1`).
 - Docs-only fixes: push `main`, no new release unless asked.
 - Public docs: do not name a specific CraftFromChests package; say CraftFromChests-style plugins may break.
