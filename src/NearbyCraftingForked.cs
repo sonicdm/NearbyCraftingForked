@@ -20,7 +20,7 @@ namespace NearbyCraftingForked
 
 		public const string PluginName = "Nearby Crafting Forked";
 
-		public const string PluginVersion = "1.5.0";
+		public const string PluginVersion = "1.5.1";
 
 		internal static ConfigEntry<float> Range;
 
@@ -45,6 +45,10 @@ namespace NearbyCraftingForked
 		internal static ConfigEntry<bool> EnableMassDeposit;
 
 		internal static ConfigEntry<KeyboardShortcut> MassDepositHotkey;
+
+		internal static ConfigEntry<bool> QuickDepositHighlightChests;
+
+		internal static ConfigEntry<string> QuickDepositHighlightColor;
 
 		internal static ConfigEntry<KeyboardShortcut> ReloadConfigHotkey;
 
@@ -133,6 +137,8 @@ namespace NearbyCraftingForked
 			DebugContainerDetails = Config.Bind<bool>("Debug", "DebugContainerDetails", false, "When DebugLogging is enabled, include per-container cache/scan details. This can be noisy.");
 			EnableMassDeposit = Config.Bind<bool>("Quick Deposit", "Enabled", true, "Enable the nearby mass quick-deposit hotkey.");
 			MassDepositHotkey = Config.Bind<KeyboardShortcut>("Quick Deposit", "Hotkey", new KeyboardShortcut((KeyCode)287, Array.Empty<KeyCode>()), "Hotkey used to quick-deposit matching inventory stacks into all eligible nearby containers. Default: F6.");
+			QuickDepositHighlightChests = Config.Bind<bool>("Quick Deposit", "HighlightChests", false, "Glow chests that received items from Quick Deposit. Off by default. Uses the same pulse/duration as Item Locate; color is HighlightColor below. Clear with 'nearby clear'.");
+			QuickDepositHighlightColor = Config.Bind<string>("Quick Deposit", "HighlightColor", "0.25,0.95,0.4", "Emission tint for Quick Deposit chest glows as R,G,B in 0-1 range. Separate from Item Locate GlowColor.");
 			ReloadConfigHotkey = Config.Bind<KeyboardShortcut>("General", "ReloadConfigHotkey", KeyboardShortcut.Empty, "Optional hotkey to force-reload this mod's config from disk. Unset by default.");
 			AutoReloadConfig = Config.Bind<bool>("General", "AutoReloadConfig", true, "Automatically reload this mod's config when the .cfg file changes on disk (edit in r2modman/Notepad, save, and it applies in-game).");
 			QuickDepositExcludeConsumables = Config.Bind<bool>("Quick Deposit - Exclusions", "ExcludeConsumables", true, "Keep consumables such as food, meads and potions in the player inventory.");
@@ -140,8 +146,8 @@ namespace NearbyCraftingForked
 			QuickDepositExcludeEquipment = Config.Bind<bool>("Quick Deposit - Exclusions", "ExcludeEquipment", true, "Keep weapons, armor, shields, tools, torches and other equipment in the player inventory.");
 			QuickDepositExcludeUtility = Config.Bind<bool>("Quick Deposit - Exclusions", "ExcludeUtility", true, "Keep Utility item types in the player inventory.");
 			QuickDepositExcludedItemTypes = Config.Bind<string>("Quick Deposit - Exclusions", "ExcludedItemTypes", "", "Additional ItemType names to exclude, comma-separated. Matching is case-insensitive. Example: Trophy,Misc");
-			QuickDepositExcludedItems = Config.Bind<string>("Quick Deposit - Exclusions", "ExcludedItems", "", "Specific prefab/internal/shared item names to exclude, comma-separated. Case-insensitive. Supports * wildcards (e.g. Dragon*,*Egg). Example: Coins,DragonEgg");
-			QuickDepositAllowedItems = Config.Bind<string>("Quick Deposit - Exclusions", "AllowedItems", "", "Exceptions to exclusions: these items still quick-deposit even if their ItemType is excluded. Comma-separated prefab/internal/shared names, case-insensitive, * wildcards allowed. Example: Mushroom*,Honey");
+			QuickDepositExcludedItems = Config.Bind<string>("Quick Deposit - Exclusions", "ExcludedItems", "", "Prefab, shared, or localized item names to exclude, comma-separated. Case-insensitive. * wildcards allowed. A leading * matches the display name and the first prefab word only — not descriptions or later words in a compound prefab (so *Berr* will not match Oatmeal). Example: Coins,DragonEgg,Oatmeal");
+			QuickDepositAllowedItems = Config.Bind<string>("Quick Deposit - Exclusions", "AllowedItems", "", "Exceptions to exclusions: these items still quick-deposit even if their ItemType is excluded. Prefab, shared, or localized names, case-insensitive, * wildcards allowed. A leading * matches display name / first prefab word only (so *Berr* deposits berries, not Oatmeal). Example: Mushroom*,Honey,*Berr*");
 			StationFuelEnabled = Config.Bind<bool>("Station Fuel", "Enabled", true, "Pull fuel (and smelter ore) from nearby eligible containers when interacting with smelters, kilns, fires, torches, braziers, and similar stations.");
 			EnableOreFromChests = Config.Bind<bool>("Station Fuel", "EnableOreFromChests", true, "When Station Fuel is enabled, also pull smelter/kiln/blast-furnace cookable inputs (ore/scrap) from nearby containers.");
 			ItemLocateEnabled = Config.Bind<bool>("Item Locate", "Enabled", true, "Enable the 'nearby' console/chat command to glow eligible chests that contain an item.");
@@ -164,7 +170,7 @@ namespace NearbyCraftingForked
 				Logger.LogInfo((object)PluginName + " " + PluginVersion + " loaded.");
 				if (DebugEnabled)
 				{
-					Debug($"Config: Enabled={Enabled.Value}, EnableBuilding={EnableBuilding.Value}, Range={Range.Value:0.##}m, " + $"RequirePlayerPlacedContainer={RequirePlayerPlacedContainer.Value}, " + $"IgnoreMovingContainers={IgnoreMovingContainers.Value}, IgnoreObliterators={IgnoreObliterators.Value}, " + $"FixRequirementIndicator={FixRequirementIndicator.Value}, " + $"BalrondCompatibility={BalrondCompatibility.Value}, " + $"EnableMassDeposit={EnableMassDeposit.Value}, MassDepositHotkey={MassDepositHotkey.Value}, " + $"StationFuel={StationFuelEnabled.Value}, OreFromChests={EnableOreFromChests.Value}, " + $"ItemLocate={ItemLocateEnabled.Value}, " + $"DebugContainerDetails={DebugContainerDetails.Value}");
+					Debug($"Config: Enabled={Enabled.Value}, EnableBuilding={EnableBuilding.Value}, Range={Range.Value:0.##}m, " + $"RequirePlayerPlacedContainer={RequirePlayerPlacedContainer.Value}, " + $"IgnoreMovingContainers={IgnoreMovingContainers.Value}, IgnoreObliterators={IgnoreObliterators.Value}, " + $"FixRequirementIndicator={FixRequirementIndicator.Value}, " + $"BalrondCompatibility={BalrondCompatibility.Value}, " + $"EnableMassDeposit={EnableMassDeposit.Value}, MassDepositHotkey={MassDepositHotkey.Value}, " + $"QDHighlight={QuickDepositHighlightChests.Value}, " + $"StationFuel={StationFuelEnabled.Value}, OreFromChests={EnableOreFromChests.Value}, " + $"ItemLocate={ItemLocateEnabled.Value}, " + $"DebugContainerDetails={DebugContainerDetails.Value}");
 				}
 			}
 			catch (Exception ex)
@@ -352,6 +358,7 @@ namespace NearbyCraftingForked
 			int num = 0;
 			int num2 = 0;
 			int num3 = 0;
+			List<Container> deposited = new List<Container>();
 			for (int i = 0; i < list.Count; i++)
 			{
 				Container val = list[i];
@@ -370,6 +377,7 @@ namespace NearbyCraftingForked
 						if (num4 > 0)
 						{
 							num2++;
+							deposited.Add(val);
 						}
 						if (ContainerDebugEnabled)
 						{
@@ -392,6 +400,10 @@ namespace NearbyCraftingForked
 			}
 			string text = ((num3 > 0) ? string.Format("Quick Deposit: {0} item{1} deposited into {2} chest{3}", num3, (num3 == 1) ? "" : "s", num2, (num2 == 1) ? "" : "s") : "Quick Deposit: nothing to deposit");
 			((Character)player).Message((MessageHud.MessageType)2, text, 0, (Sprite)null, false);
+			if (QuickDepositHighlightChests != null && QuickDepositHighlightChests.Value && deposited.Count > 0)
+			{
+				ItemLocate.HighlightContainers(deposited, QuickDepositHighlightColor?.Value, new Color(0.25f, 0.95f, 0.4f, 1f));
+			}
 		}
 
 		private static int QuickDepositIntoContainer(Inventory sourceInventory, Inventory targetInventory)
@@ -556,17 +568,111 @@ namespace NearbyCraftingForked
 				return false;
 			}
 
-			if (CsvContains(csv, item.m_shared.m_name))
+			string[] patterns = csv.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+			for (int i = 0; i < patterns.Length; i++)
+			{
+				string pattern = patterns[i].Trim();
+				if (pattern.Length > 0 && ItemMatchesFilterPattern(item, pattern))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Quick Deposit name lists match identity fields only (localized display name, shared
+		/// token, prefab). Item descriptions are never searched. Patterns that start with '*'
+		/// (e.g. *Berr*) use the display name and the leading CamelCase prefab token so a
+		/// compound id like OatmealLingonberryJam is not treated as a berry.
+		/// </summary>
+		private static bool ItemMatchesFilterPattern(ItemDrop.ItemData item, string pattern)
+		{
+			string sharedName = item.m_shared.m_name;
+			string localized = ItemLocate.GetLocalizedName(sharedName);
+			string prefabName = null;
+			if ((Object)(object)item.m_dropPrefab != (Object)null)
+			{
+				prefabName = ((Object)item.m_dropPrefab).name;
+			}
+
+			string leadingPrefab = GetLeadingNameToken(prefabName);
+			bool infixOrSuffix = pattern[0] == '*';
+
+			if (!string.IsNullOrEmpty(localized) && !IsCompoundPrefabDump(localized, prefabName) && NameMatches(localized, pattern))
 			{
 				return true;
 			}
 
-			if ((Object)(object)item.m_dropPrefab != (Object)null && CsvContains(csv, ((Object)item.m_dropPrefab).name))
+			if (!string.IsNullOrEmpty(leadingPrefab) && NameMatches(leadingPrefab, pattern))
+			{
+				return true;
+			}
+
+			if (infixOrSuffix)
+			{
+				return false;
+			}
+
+			if (!string.IsNullOrEmpty(sharedName) && NameMatches(sharedName, pattern))
+			{
+				return true;
+			}
+
+			if (!string.IsNullOrEmpty(sharedName) && sharedName[0] == '$' && NameMatches(sharedName.Substring(1), pattern))
+			{
+				return true;
+			}
+
+			if (!string.IsNullOrEmpty(prefabName) && NameMatches(prefabName, pattern))
 			{
 				return true;
 			}
 
 			return false;
+		}
+
+		private static string GetLeadingNameToken(string name)
+		{
+			if (string.IsNullOrEmpty(name))
+			{
+				return string.Empty;
+			}
+
+			int i = 1;
+			while (i < name.Length)
+			{
+				char c = name[i];
+				if (c == '_' || c == '-' || c == ' ')
+				{
+					break;
+				}
+				if (char.IsUpper(c))
+				{
+					break;
+				}
+				i++;
+			}
+
+			return name.Substring(0, i);
+		}
+
+		private static bool IsCompoundPrefabDump(string candidate, string prefabName)
+		{
+			if (string.IsNullOrEmpty(candidate) || string.IsNullOrEmpty(prefabName))
+			{
+				return false;
+			}
+
+			string leading = GetLeadingNameToken(prefabName);
+			if (leading.Length >= prefabName.Length)
+			{
+				return false;
+			}
+
+			string compact = candidate.Replace(" ", string.Empty);
+			return string.Equals(compact, prefabName, StringComparison.OrdinalIgnoreCase);
 		}
 
 		private static bool IsEquipmentItemType(ItemDrop.ItemData.ItemType itemType)
@@ -2362,6 +2468,48 @@ namespace NearbyCraftingForked
 			_activeUntil = -1f;
 		}
 
+		internal static void HighlightContainers(List<Container> containers, string? colorRaw, Color fallback)
+		{
+			ClearHighlights();
+			if (containers == null || containers.Count == 0)
+			{
+				return;
+			}
+
+			_baseGlow = ParseGlowColor(colorRaw, fallback);
+			float duration = NearbyCraftingForkedPlugin.ItemLocateDurationSeconds != null
+				? Mathf.Clamp(NearbyCraftingForkedPlugin.ItemLocateDurationSeconds.Value, 3f, 120f)
+				: 15f;
+
+			for (int i = 0; i < containers.Count; i++)
+			{
+				Container container = containers[i];
+				if ((Object)(object)container == (Object)null)
+				{
+					continue;
+				}
+
+				HighlightedChest? highlight = HighlightedChest.TryCreate(container);
+				if (highlight != null)
+				{
+					Active.Add(highlight);
+				}
+			}
+
+			if (Active.Count == 0)
+			{
+				return;
+			}
+
+			_activeUntil = Time.realtimeSinceStartup + duration;
+			Tick();
+
+			if (NearbyCraftingForkedPlugin.DebugEnabled)
+			{
+				NearbyCraftingForkedPlugin.Debug($"Quick-deposit highlight: glowing={Active.Count}, duration={duration:0.#}s.");
+			}
+		}
+
 		internal static void Tick()
 		{
 			if (Active.Count == 0)
@@ -2387,16 +2535,16 @@ namespace NearbyCraftingForked
 
 		private static void OnCommand(Terminal.ConsoleEventArgs args)
 		{
-			if (NearbyCraftingForkedPlugin.ItemLocateEnabled == null || !NearbyCraftingForkedPlugin.ItemLocateEnabled.Value)
-			{
-				Say("Item locate is disabled in config.");
-				return;
-			}
-
 			if (args.Length >= 2 && string.Equals(args[1], "clear", StringComparison.OrdinalIgnoreCase))
 			{
 				ClearHighlights();
 				Say("Cleared nearby chest highlights.");
+				return;
+			}
+
+			if (NearbyCraftingForkedPlugin.ItemLocateEnabled == null || !NearbyCraftingForkedPlugin.ItemLocateEnabled.Value)
+			{
+				Say("Item locate is disabled in config.");
 				return;
 			}
 
@@ -2463,7 +2611,7 @@ namespace NearbyCraftingForked
 		private static void SearchAndHighlight(Player player, string pattern, string displayName)
 		{
 			ClearHighlights();
-			_baseGlow = ParseGlowColor(NearbyCraftingForkedPlugin.ItemLocateGlowColor?.Value);
+			_baseGlow = ParseGlowColor(NearbyCraftingForkedPlugin.ItemLocateGlowColor?.Value, new Color(1f, 0.85f, 0.2f, 1f));
 			int maxHighlights = NearbyCraftingForkedPlugin.ItemLocateMaxHighlights != null
 				? Mathf.Clamp(NearbyCraftingForkedPlugin.ItemLocateMaxHighlights.Value, 1, 50)
 				: 10;
@@ -2637,7 +2785,7 @@ namespace NearbyCraftingForked
 
 		private static bool _localizeResolved;
 
-		private static string GetLocalizedName(string sharedName)
+		internal static string GetLocalizedName(string sharedName)
 		{
 			if (string.IsNullOrEmpty(sharedName))
 			{
@@ -2751,9 +2899,8 @@ namespace NearbyCraftingForked
 			return name;
 		}
 
-		private static Color ParseGlowColor(string? raw)
+		private static Color ParseGlowColor(string? raw, Color fallback)
 		{
-			Color fallback = new Color(1f, 0.85f, 0.2f, 1f);
 			if (string.IsNullOrWhiteSpace(raw))
 			{
 				return fallback;

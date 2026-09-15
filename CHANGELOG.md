@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+
+- Quick Deposit name lists no longer treat cooked foods as berries just because an ingredient is in the prefab id (Oatmeal / `OatmealLingonberryJam` vs `*Berr*`). Patterns that start with `*` match the display name and the first prefab word only; item descriptions are never searched. Exact names like `Oatmeal` match the localized display name, and `ExcludedItems` still wins over `AllowedItems`.
+- Optional Quick Deposit chest glow: `HighlightChests` (off by default) and `HighlightColor` (default green `0.25,0.95,0.4`, independent of Item Locate). Duration uses Item Locate `DurationSeconds`. `nearby clear` still clears the glow.
+
 ## 1.5.0
 
 - Add `nearby` console/chat command to locate an item in eligible nearby chests and glow the nearest matches (`[Item Locate]` config: Enabled, MaxHighlights, DurationSeconds, GlowColor).

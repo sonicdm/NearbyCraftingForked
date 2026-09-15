@@ -12,7 +12,7 @@ This is a source fork of **Nearby Crafting 1.2.1** (original by IPA38 / mikeg) w
 | Plugin name | `Nearby Crafting Forked` |
 | Plugin GUID | `com.sonicdm.valheim.nearbycraftingforked` |
 | Assembly | `NearbyCraftingForked.dll` |
-| Version | `1.5.0` |
+| Version | `1.5.1` |
 | Config file | `BepInEx/config/com.sonicdm.valheim.nearbycraftingforked.cfg` |
 
 Do **not** run this fork at the same time as the original Nearby Crafting plugin. Both patch the same Valheim methods; use one or the other.
@@ -25,6 +25,7 @@ This may break other CraftFromChests-style plugins that also patch crafting, bui
 - Build using materials from nearby eligible containers.
 - Mass Quick Deposit sends matching inventory items to nearby chests with one configurable hotkey.
 - Quick Deposit can be enabled or disabled independently from Nearby Crafting.
+- Optional glow on chests that received a Quick Deposit (off by default; color is independent of item locate).
 - Quick Deposit exclusions keep consumables, ammo, equipment and utility items in your inventory by default.
 - Per-item exclude / allow lists with `*` wildcards (for example deposit mushrooms while keeping other food).
 - Fuel smelters, charcoal kilns, blast furnaces, campfires, torches, braziers and similar stations from nearby chests on interact (uses each prefab’s own fuel item: Wood, Resin, Coal, Greydwarf eye, etc.).
@@ -42,6 +43,7 @@ Press the configured hotkey to deposit matching items into eligible nearby chest
 - An item is only deposited into a chest that **already contains that item type**.
 - If one matching chest cannot accept the full amount, the remaining items can continue to another matching chest.
 - A HUD message reports how many items were deposited and how many chests received items.
+- Optional chest glow (`HighlightChests`, off by default) shows which chests received items. Color is `HighlightColor` (default green `0.25,0.95,0.4`), separate from Item Locate's gold glow. Duration matches Item Locate `DurationSeconds`. Clear with `nearby clear`.
 - Only stackable items are deposited (max stack size greater than 1).
 - Exclusion rules apply only to Quick Deposit. Nearby crafting and building can still pull materials from chests.
 
@@ -51,6 +53,8 @@ Default Quick Deposit settings:
 [Quick Deposit]
 Enabled = true
 Hotkey = F6
+HighlightChests = false
+HighlightColor = 0.25,0.95,0.4
 ```
 
 ## Quick Deposit exclusions
@@ -80,9 +84,10 @@ AllowedItems =
 
 ### Matching rules
 
-- `ExcludedItems` and `AllowedItems` match the item **prefab name** and internal shared name (case-insensitive).
-- Prefer prefab-style names such as `MushroomYellow`.
+- `ExcludedItems` and `AllowedItems` match the item **localized display name**, **prefab name**, and internal shared name (case-insensitive). Item **descriptions are never searched**.
+- Prefer prefab-style names such as `MushroomYellow`. Display names also work (`Oatmeal` matches the dish even though its prefab is `OatmealLingonberryJam`).
 - `*` wildcards are supported: `Mushroom*`, `*Egg`, `Cooked*Meat*`.
+- A pattern that **starts with** `*` (`*Berr*`, `*Egg`) matches the display name and the **first** prefab word only. Later words in a compound prefab are ignored, so `*Berr*` deposits Blueberries / Lingonberries / Raspberry, not Oatmeal (prefab `OatmealLingonberryJam`).
 - If an item appears in both lists, **`ExcludedItems` wins**.
 - Exclusions do not affect crafting or building material pulls.
 
@@ -245,6 +250,7 @@ Nearby Crafting Forked includes options for:
 - Enabling or disabling the crafting requirement indicator fix.
 - Enabling or disabling Mass Quick Deposit.
 - Changing the Mass Quick Deposit hotkey.
+- Optional Quick Deposit chest glow and color (off by default).
 - Quick Deposit type exclusions and per-item exclude/allow lists.
 - Station fuel/ore assist from nearby chests.
 - Item locate (`nearby` command) glow and duration.
