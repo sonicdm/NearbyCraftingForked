@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2
+
+- Quick Deposit glow duration is its own setting (`HighlightDurationSeconds`, default 15).
+- Glow colors take hex (`#248038`) or RGB (`36,128,56` / `0.14,0.50,0.22`), with a separate opacity slider (`HighlightAlpha` / `GlowAlpha`).
+- Default glow colors are dimmer (`#248038` deposit, `#8C731A` locate).
+
 ## 1.5.1
 
 - Quick Deposit name lists no longer treat cooked foods as berries just because an ingredient is in the prefab id (Oatmeal / `OatmealLingonberryJam` vs `*Berr*`). Patterns that start with `*` match the display name and the first prefab word only; item descriptions are never searched. Exact names like `Oatmeal` match the localized display name, and `ExcludedItems` still wins over `AllowedItems`.

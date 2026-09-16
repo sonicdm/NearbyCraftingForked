@@ -20,7 +20,7 @@ namespace NearbyCraftingForked
 
 		public const string PluginName = "Nearby Crafting Forked";
 
-		public const string PluginVersion = "1.5.1";
+		public const string PluginVersion = "1.5.2";
 
 		internal static ConfigEntry<float> Range;
 
@@ -50,6 +50,10 @@ namespace NearbyCraftingForked
 
 		internal static ConfigEntry<string> QuickDepositHighlightColor;
 
+		internal static ConfigEntry<float> QuickDepositHighlightAlpha;
+
+		internal static ConfigEntry<float> QuickDepositHighlightDurationSeconds;
+
 		internal static ConfigEntry<KeyboardShortcut> ReloadConfigHotkey;
 
 		internal static ConfigEntry<bool> AutoReloadConfig;
@@ -65,6 +69,8 @@ namespace NearbyCraftingForked
 		internal static ConfigEntry<float> ItemLocateDurationSeconds;
 
 		internal static ConfigEntry<string> ItemLocateGlowColor;
+
+		internal static ConfigEntry<float> ItemLocateGlowAlpha;
 
 		internal static ConfigEntry<bool> QuickDepositExcludeConsumables;
 
@@ -137,8 +143,10 @@ namespace NearbyCraftingForked
 			DebugContainerDetails = Config.Bind<bool>("Debug", "DebugContainerDetails", false, "When DebugLogging is enabled, include per-container cache/scan details. This can be noisy.");
 			EnableMassDeposit = Config.Bind<bool>("Quick Deposit", "Enabled", true, "Enable the nearby mass quick-deposit hotkey.");
 			MassDepositHotkey = Config.Bind<KeyboardShortcut>("Quick Deposit", "Hotkey", new KeyboardShortcut((KeyCode)287, Array.Empty<KeyCode>()), "Hotkey used to quick-deposit matching inventory stacks into all eligible nearby containers. Default: F6.");
-			QuickDepositHighlightChests = Config.Bind<bool>("Quick Deposit", "HighlightChests", false, "Glow chests that received items from Quick Deposit. Off by default. Uses the same pulse/duration as Item Locate; color is HighlightColor below. Clear with 'nearby clear'.");
-			QuickDepositHighlightColor = Config.Bind<string>("Quick Deposit", "HighlightColor", "0.25,0.95,0.4", "Emission tint for Quick Deposit chest glows as R,G,B in 0-1 range. Separate from Item Locate GlowColor.");
+			QuickDepositHighlightChests = Config.Bind<bool>("Quick Deposit", "HighlightChests", false, "Glow chests that received items from Quick Deposit. Off by default. Color, opacity, and duration are HighlightColor / HighlightAlpha / HighlightDurationSeconds. Clear with 'nearby clear'.");
+			QuickDepositHighlightColor = Config.Bind<string>("Quick Deposit", "HighlightColor", "#248038", "Glow color as hex (#248038) or RGB (36,128,56 or 0.14,0.50,0.22). rgb()/rgba() pastes work. Use HighlightAlpha for opacity.");
+			QuickDepositHighlightAlpha = Config.Bind<float>("Quick Deposit", "HighlightAlpha", 1f, new ConfigDescription("Opacity of Quick Deposit chest glows. 0 is invisible, 1 is full intensity.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(0.05f, 1f), Array.Empty<object>()));
+			QuickDepositHighlightDurationSeconds = Config.Bind<float>("Quick Deposit", "HighlightDurationSeconds", 15f, new ConfigDescription("How long Quick Deposit chest glows last before auto-clear.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(1f, 120f), Array.Empty<object>()));
 			ReloadConfigHotkey = Config.Bind<KeyboardShortcut>("General", "ReloadConfigHotkey", KeyboardShortcut.Empty, "Optional hotkey to force-reload this mod's config from disk. Unset by default.");
 			AutoReloadConfig = Config.Bind<bool>("General", "AutoReloadConfig", true, "Automatically reload this mod's config when the .cfg file changes on disk (edit in r2modman/Notepad, save, and it applies in-game).");
 			QuickDepositExcludeConsumables = Config.Bind<bool>("Quick Deposit - Exclusions", "ExcludeConsumables", true, "Keep consumables such as food, meads and potions in the player inventory.");
@@ -153,7 +161,8 @@ namespace NearbyCraftingForked
 			ItemLocateEnabled = Config.Bind<bool>("Item Locate", "Enabled", true, "Enable the 'nearby' console/chat command to glow eligible chests that contain an item.");
 			ItemLocateMaxHighlights = Config.Bind<int>("Item Locate", "MaxHighlights", 10, new ConfigDescription("Maximum chests to glow (nearest first; farther matches are culled).", (AcceptableValueBase)(object)new AcceptableValueRange<int>(1, 50), Array.Empty<object>()));
 			ItemLocateDurationSeconds = Config.Bind<float>("Item Locate", "DurationSeconds", 15f, new ConfigDescription("How long chest glows last before auto-clear.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(3f, 120f), Array.Empty<object>()));
-			ItemLocateGlowColor = Config.Bind<string>("Item Locate", "GlowColor", "1,0.85,0.2", "Emission tint for highlighted chests as R,G,B in 0-1 range.");
+			ItemLocateGlowColor = Config.Bind<string>("Item Locate", "GlowColor", "#8C731A", "Glow color as hex (#8C731A) or RGB (140,115,26 or 0.55,0.45,0.10). rgb()/rgba() pastes work. Use GlowAlpha for opacity.");
+			ItemLocateGlowAlpha = Config.Bind<float>("Item Locate", "GlowAlpha", 1f, new ConfigDescription("Opacity of item-locate chest glows. 0 is invisible, 1 is full intensity.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(0.05f, 1f), Array.Empty<object>()));
 			Range.SettingChanged += OnContainerSettingChanged;
 			IgnoreMovingContainers.SettingChanged += OnContainerSettingChanged;
 			IgnoreObliterators.SettingChanged += OnContainerSettingChanged;
@@ -402,7 +411,12 @@ namespace NearbyCraftingForked
 			((Character)player).Message((MessageHud.MessageType)2, text, 0, (Sprite)null, false);
 			if (QuickDepositHighlightChests != null && QuickDepositHighlightChests.Value && deposited.Count > 0)
 			{
-				ItemLocate.HighlightContainers(deposited, QuickDepositHighlightColor?.Value, new Color(0.25f, 0.95f, 0.4f, 1f));
+				ItemLocate.HighlightContainers(
+					deposited,
+					QuickDepositHighlightColor?.Value,
+					new Color(0.14f, 0.50f, 0.22f, 1f),
+					QuickDepositHighlightDurationSeconds != null ? QuickDepositHighlightDurationSeconds.Value : 15f,
+					QuickDepositHighlightAlpha != null ? QuickDepositHighlightAlpha.Value : 1f);
 			}
 		}
 
@@ -2423,7 +2437,9 @@ namespace NearbyCraftingForked
 
 		private static float _activeUntil = -1f;
 
-		private static Color _baseGlow = new Color(1f, 0.85f, 0.2f, 1f);
+		private static Color _baseGlow = new Color(0.55f, 0.45f, 0.10f, 1f);
+
+		private static float _glowAlpha = 1f;
 
 		internal static void RegisterCommand()
 		{
@@ -2468,7 +2484,7 @@ namespace NearbyCraftingForked
 			_activeUntil = -1f;
 		}
 
-		internal static void HighlightContainers(List<Container> containers, string? colorRaw, Color fallback)
+		internal static void HighlightContainers(List<Container> containers, string? colorRaw, Color fallback, float durationSeconds, float alpha)
 		{
 			ClearHighlights();
 			if (containers == null || containers.Count == 0)
@@ -2477,9 +2493,8 @@ namespace NearbyCraftingForked
 			}
 
 			_baseGlow = ParseGlowColor(colorRaw, fallback);
-			float duration = NearbyCraftingForkedPlugin.ItemLocateDurationSeconds != null
-				? Mathf.Clamp(NearbyCraftingForkedPlugin.ItemLocateDurationSeconds.Value, 3f, 120f)
-				: 15f;
+			_glowAlpha = Mathf.Clamp01(alpha);
+			float duration = Mathf.Clamp(durationSeconds, 1f, 120f);
 
 			for (int i = 0; i < containers.Count; i++)
 			{
@@ -2525,8 +2540,8 @@ namespace NearbyCraftingForked
 			}
 
 			float pulse = 0.45f + 0.55f * (0.5f + 0.5f * Mathf.Sin(now * 5f));
-			Color glow = _baseGlow * pulse;
-			glow.a = 1f;
+			float intensity = pulse * _glowAlpha;
+			Color glow = new Color(_baseGlow.r * intensity, _baseGlow.g * intensity, _baseGlow.b * intensity, 1f);
 			for (int i = 0; i < Active.Count; i++)
 			{
 				Active[i].ApplyGlow(glow);
@@ -2611,7 +2626,10 @@ namespace NearbyCraftingForked
 		private static void SearchAndHighlight(Player player, string pattern, string displayName)
 		{
 			ClearHighlights();
-			_baseGlow = ParseGlowColor(NearbyCraftingForkedPlugin.ItemLocateGlowColor?.Value, new Color(1f, 0.85f, 0.2f, 1f));
+			_baseGlow = ParseGlowColor(NearbyCraftingForkedPlugin.ItemLocateGlowColor?.Value, new Color(0.55f, 0.45f, 0.10f, 1f));
+			_glowAlpha = NearbyCraftingForkedPlugin.ItemLocateGlowAlpha != null
+				? Mathf.Clamp01(NearbyCraftingForkedPlugin.ItemLocateGlowAlpha.Value)
+				: 1f;
 			int maxHighlights = NearbyCraftingForkedPlugin.ItemLocateMaxHighlights != null
 				? Mathf.Clamp(NearbyCraftingForkedPlugin.ItemLocateMaxHighlights.Value, 1, 50)
 				: 10;
@@ -2906,20 +2924,64 @@ namespace NearbyCraftingForked
 				return fallback;
 			}
 
-			string[] parts = raw!.Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			string text = StripRgbFunction(raw.Trim());
+			if (text.IndexOf(',') < 0 && text.IndexOf(' ') < 0 && TryParseHexColor(text, out Color hex))
+			{
+				hex.a = 1f;
+				return hex;
+			}
+
+			string[] parts = text.Split(new char[] { ',', ' ', ';' }, StringSplitOptions.RemoveEmptyEntries);
 			if (parts.Length < 3)
 			{
 				return fallback;
 			}
 
-			if (!float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float r)
-				|| !float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float g)
-				|| !float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float b))
+			if (!float.TryParse(parts[0].Trim('%'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float r)
+				|| !float.TryParse(parts[1].Trim('%'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float g)
+				|| !float.TryParse(parts[2].Trim('%'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float b))
 			{
 				return fallback;
 			}
 
+			if (r > 1f || g > 1f || b > 1f)
+			{
+				r /= 255f;
+				g /= 255f;
+				b /= 255f;
+			}
+
 			return new Color(Mathf.Clamp01(r), Mathf.Clamp01(g), Mathf.Clamp01(b), 1f);
+		}
+
+		private static string StripRgbFunction(string text)
+		{
+			if (text.StartsWith("rgba", StringComparison.OrdinalIgnoreCase))
+			{
+				text = text.Substring(4).Trim();
+			}
+			else if (text.StartsWith("rgb", StringComparison.OrdinalIgnoreCase))
+			{
+				text = text.Substring(3).Trim();
+			}
+
+			return text.Trim().TrimStart('(').TrimEnd(')');
+		}
+
+		private static bool TryParseHexColor(string text, out Color color)
+		{
+			color = default;
+			if (string.IsNullOrEmpty(text))
+			{
+				return false;
+			}
+
+			if (text[0] != '#')
+			{
+				text = "#" + text;
+			}
+
+			return ColorUtility.TryParseHtmlString(text, out color);
 		}
 
 		private static void Say(string message)
