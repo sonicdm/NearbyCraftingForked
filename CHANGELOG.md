@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.3
+
+- Item locate and Quick Deposit now glow parked carts. Cart inventories sit on a child container, so the glow uses the parent wagon meshes.
+- Glow skips line and trail renderers so cart ropes and trails stay unlit.
+
 ## 1.5.2
 
 - Quick Deposit glow duration is its own setting (`HighlightDurationSeconds`, default 15).

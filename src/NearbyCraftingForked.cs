@@ -20,7 +20,7 @@ namespace NearbyCraftingForked
 
 		public const string PluginName = "Nearby Crafting Forked";
 
-		public const string PluginVersion = "1.5.2";
+		public const string PluginVersion = "1.5.3";
 
 		internal static ConfigEntry<float> Range;
 
@@ -143,7 +143,7 @@ namespace NearbyCraftingForked
 			DebugContainerDetails = Config.Bind<bool>("Debug", "DebugContainerDetails", false, "When DebugLogging is enabled, include per-container cache/scan details. This can be noisy.");
 			EnableMassDeposit = Config.Bind<bool>("Quick Deposit", "Enabled", true, "Enable the nearby mass quick-deposit hotkey.");
 			MassDepositHotkey = Config.Bind<KeyboardShortcut>("Quick Deposit", "Hotkey", new KeyboardShortcut((KeyCode)287, Array.Empty<KeyCode>()), "Hotkey used to quick-deposit matching inventory stacks into all eligible nearby containers. Default: F6.");
-			QuickDepositHighlightChests = Config.Bind<bool>("Quick Deposit", "HighlightChests", false, "Glow chests that received items from Quick Deposit. Off by default. Color, opacity, and duration are HighlightColor / HighlightAlpha / HighlightDurationSeconds. Clear with 'nearby clear'.");
+			QuickDepositHighlightChests = Config.Bind<bool>("Quick Deposit", "HighlightChests", false, "Glow chests and parked carts that received items from Quick Deposit. Off by default. Color, opacity, and duration are HighlightColor / HighlightAlpha / HighlightDurationSeconds. Clear with 'nearby clear'.");
 			QuickDepositHighlightColor = Config.Bind<string>("Quick Deposit", "HighlightColor", "#248038", "Glow color as hex (#248038) or RGB (36,128,56 or 0.14,0.50,0.22). rgb()/rgba() pastes work. Use HighlightAlpha for opacity.");
 			QuickDepositHighlightAlpha = Config.Bind<float>("Quick Deposit", "HighlightAlpha", 1f, new ConfigDescription("Opacity of Quick Deposit chest glows. 0 is invisible, 1 is full intensity.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(0.05f, 1f), Array.Empty<object>()));
 			QuickDepositHighlightDurationSeconds = Config.Bind<float>("Quick Deposit", "HighlightDurationSeconds", 15f, new ConfigDescription("How long Quick Deposit chest glows last before auto-clear.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(1f, 120f), Array.Empty<object>()));
@@ -158,8 +158,8 @@ namespace NearbyCraftingForked
 			QuickDepositAllowedItems = Config.Bind<string>("Quick Deposit - Exclusions", "AllowedItems", "", "Exceptions to exclusions: these items still quick-deposit even if their ItemType is excluded. Prefab, shared, or localized names, case-insensitive, * wildcards allowed. A leading * matches display name / first prefab word only (so *Berr* deposits berries, not Oatmeal). Example: Mushroom*,Honey,*Berr*");
 			StationFuelEnabled = Config.Bind<bool>("Station Fuel", "Enabled", true, "Pull fuel (and smelter ore) from nearby eligible containers when interacting with smelters, kilns, fires, torches, braziers, and similar stations.");
 			EnableOreFromChests = Config.Bind<bool>("Station Fuel", "EnableOreFromChests", true, "When Station Fuel is enabled, also pull smelter/kiln/blast-furnace cookable inputs (ore/scrap) from nearby containers.");
-			ItemLocateEnabled = Config.Bind<bool>("Item Locate", "Enabled", true, "Enable the 'nearby' console/chat command to glow eligible chests that contain an item.");
-			ItemLocateMaxHighlights = Config.Bind<int>("Item Locate", "MaxHighlights", 10, new ConfigDescription("Maximum chests to glow (nearest first; farther matches are culled).", (AcceptableValueBase)(object)new AcceptableValueRange<int>(1, 50), Array.Empty<object>()));
+			ItemLocateEnabled = Config.Bind<bool>("Item Locate", "Enabled", true, "Enable the 'nearby' console/chat command to glow eligible chests and parked carts that contain an item.");
+			ItemLocateMaxHighlights = Config.Bind<int>("Item Locate", "MaxHighlights", 10, new ConfigDescription("Maximum chests/carts to glow (nearest first; farther matches are culled).", (AcceptableValueBase)(object)new AcceptableValueRange<int>(1, 50), Array.Empty<object>()));
 			ItemLocateDurationSeconds = Config.Bind<float>("Item Locate", "DurationSeconds", 15f, new ConfigDescription("How long chest glows last before auto-clear.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(3f, 120f), Array.Empty<object>()));
 			ItemLocateGlowColor = Config.Bind<string>("Item Locate", "GlowColor", "#8C731A", "Glow color as hex (#8C731A) or RGB (140,115,26 or 0.55,0.45,0.10). rgb()/rgba() pastes work. Use GlowAlpha for opacity.");
 			ItemLocateGlowAlpha = Config.Bind<float>("Item Locate", "GlowAlpha", 1f, new ConfigDescription("Opacity of item-locate chest glows. 0 is invisible, 1 is full intensity.", (AcceptableValueBase)(object)new AcceptableValueRange<float>(0.05f, 1f), Array.Empty<object>()));
@@ -2450,10 +2450,10 @@ namespace NearbyCraftingForked
 			_commandRegistered = true;
 			RegisterOne(
 				"nearby",
-				"[item|clear] Highlight nearby eligible chests containing an item (or clear). No args uses held item.");
+				"[item|clear] Highlight nearby eligible chests and carts containing an item (or clear). No args uses held item.");
 			RegisterOne(
 				"locate",
-				"[item|clear] Alias for nearby — highlight chests containing an item.");
+				"[item|clear] Alias for nearby — highlight chests and carts containing an item.");
 		}
 
 		private static void RegisterOne(string command, string description)
@@ -3002,7 +3002,7 @@ namespace NearbyCraftingForked
 
 			internal static HighlightedChest? TryCreate(Container container)
 			{
-				Renderer[] renderers = ((Component)container).GetComponentsInChildren<Renderer>(true);
+				Renderer[] renderers = GetHighlightRenderers(container);
 				if (renderers == null || renderers.Length == 0)
 				{
 					return null;
@@ -3012,7 +3012,7 @@ namespace NearbyCraftingForked
 				for (int i = 0; i < renderers.Length; i++)
 				{
 					Renderer renderer = renderers[i];
-					if ((Object)(object)renderer == (Object)null || renderer is ParticleSystemRenderer)
+					if ((Object)(object)renderer == (Object)null || renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer)
 					{
 						continue;
 					}
@@ -3030,6 +3030,28 @@ namespace NearbyCraftingForked
 				}
 
 				return highlight;
+			}
+
+			/// <summary>
+			/// Cart inventories live on a child Container; the visible wagon meshes sit on the parent Vagon.
+			/// Search the cart root so locate/deposit glows the cart body, not just the chest collider object.
+			/// </summary>
+			private static Renderer[] GetHighlightRenderers(Container container)
+			{
+				Component searchRoot = (Component)container;
+				try
+				{
+					Vagon? cart = ((Component)container).GetComponentInParent<Vagon>(true);
+					if ((Object)(object)cart != (Object)null)
+					{
+						searchRoot = cart;
+					}
+				}
+				catch
+				{
+				}
+
+				return searchRoot.GetComponentsInChildren<Renderer>(true);
 			}
 
 			internal void ApplyGlow(Color color)

@@ -102,7 +102,7 @@ Copy `bin\Release\NearbyCraftingForked.dll` there after build. If Valheim is run
 - Station fuel assist: pull **one** item from nearby eligible chests into the player inventory, then let vanilla consume it. Only when the interaction will actually accept fuel/ore (not full, not fireplace tap-to-toggle).
 - Inventory full → show vanilla `$msg_noroom`; never destroy chest stacks (`CanAddItem` + rollback).
 - `Inventory.GetItem(name, quality, isPrefabName)` — third arg is **`isPrefabName`**, not world-level. Shared names like `$item_resin` need **`false`**.
-- Item locate: Terminal command `nearby` / chat `/nearby`; glow via emission on existing chest renderers; same `NearbyContainers.Get` filters/range; idle cost ~0 when inactive.
+- Item locate: Terminal command `nearby` / chat `/nearby`; glow via emission on chest and cart renderers (carts use the parent `Vagon`); same `NearbyContainers.Get` filters/range; idle cost ~0 when inactive.
 - `IgnoreMovingContainers`: ships always ignored when on; carts ignored only while `Vagon.InUse()` / `IsAttached()` (parked carts OK).
 - Quick Deposit exclusions are independent of craft/build nearby logic.
 - Do not run alongside the original Nearby Crafting GUID.

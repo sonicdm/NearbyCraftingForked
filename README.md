@@ -12,7 +12,7 @@ This is a source fork of **Nearby Crafting 1.2.1** (original by IPA38 / mikeg) w
 | Plugin name | `Nearby Crafting Forked` |
 | Plugin GUID | `com.sonicdm.valheim.nearbycraftingforked` |
 | Assembly | `NearbyCraftingForked.dll` |
-| Version | `1.5.2` |
+| Version | `1.5.3` |
 | Config file | `BepInEx/config/com.sonicdm.valheim.nearbycraftingforked.cfg` |
 
 Do **not** run this fork at the same time as the original Nearby Crafting plugin. Both patch the same Valheim methods; use one or the other.
@@ -25,12 +25,12 @@ This may break other CraftFromChests-style plugins that also patch crafting, bui
 - Build using materials from nearby eligible containers.
 - Mass Quick Deposit sends matching inventory items to nearby chests with one configurable hotkey.
 - Quick Deposit can be enabled or disabled independently from Nearby Crafting.
-- Optional glow on chests that received a Quick Deposit (off by default; color and duration are independent of item locate).
+- Optional glow on chests and parked carts that received a Quick Deposit (off by default; color and duration are independent of item locate).
 - Quick Deposit exclusions keep consumables, ammo, equipment and utility items in your inventory by default.
 - Per-item exclude / allow lists with `*` wildcards (for example deposit mushrooms while keeping other food).
 - Fuel smelters, charcoal kilns, blast furnaces, campfires, torches, braziers and similar stations from nearby chests on interact (uses each prefab’s own fuel item: Wood, Resin, Coal, Greydwarf eye, etc.).
 - Optionally pull smelter/kiln ore and other cookable inputs from nearby chests.
-- Locate items in nearby chests with the `nearby` console/chat command (glows nearest matches).
+- Locate items in nearby chests and parked carts with the `nearby` console/chat command (glows nearest matches).
 - Containers are processed nearest-first.
 - Configurable container range and player-built / moving-container filters.
 - Compatibility support for BalrondConstructions storage layouts.
@@ -43,7 +43,7 @@ Press the configured hotkey to deposit matching items into eligible nearby chest
 - An item is only deposited into a chest that **already contains that item type**.
 - If one matching chest cannot accept the full amount, the remaining items can continue to another matching chest.
 - A HUD message reports how many items were deposited and how many chests received items.
-- Optional chest glow (`HighlightChests`, off by default) shows which chests received items. `HighlightColor` accepts hex (`#248038`) or RGB (`36,128,56` / `0.14,0.50,0.22`). Opacity is `HighlightAlpha` (slider, default 1). Duration is `HighlightDurationSeconds` (default 15). Separate from Item Locate. Clear with `nearby clear`.
+- Optional chest/cart glow (`HighlightChests`, off by default) shows which containers received items. `HighlightColor` accepts hex (`#248038`) or RGB (`36,128,56` / `0.14,0.50,0.22`). Opacity is `HighlightAlpha` (slider, default 1). Duration is `HighlightDurationSeconds` (default 15). Separate from Item Locate. Clear with `nearby clear`.
 - Only stackable items are deposited (max stack size greater than 1).
 - Exclusion rules apply only to Quick Deposit. Nearby crafting and building can still pull materials from chests.
 
@@ -217,7 +217,7 @@ EnableOreFromChests = true
 
 ## Item locate (`nearby`)
 
-Find which eligible nearby chests contain an item and glow the nearest matches (same range and container filters as crafting).
+Find which eligible nearby chests and parked carts contain an item and glow the nearest matches (same range and container filters as crafting).
 
 | Command | Effect |
 | --- | --- |
@@ -253,7 +253,7 @@ Nearby Crafting Forked includes options for:
 - Enabling or disabling the crafting requirement indicator fix.
 - Enabling or disabling Mass Quick Deposit.
 - Changing the Mass Quick Deposit hotkey.
-- Optional Quick Deposit chest glow, hex color, opacity, and duration (off by default).
+- Optional Quick Deposit chest/cart glow, hex color, opacity, and duration (off by default).
 - Quick Deposit type exclusions and per-item exclude/allow lists.
 - Station fuel/ore assist from nearby chests.
 - Item locate (`nearby` command) glow and duration.
